@@ -18,7 +18,7 @@
 #include "stm32g4xx_hal_adc_ex.h"
 
 #include "adc.h"
-
+#include "dma.h"
 #include "main.h"
 #include "tim.h"
 
@@ -35,10 +35,11 @@
 #define TELEM_MOVING_AVERAGE_BINS 			10
 
 #define FLOWRATE_SENSOR_SINGLE_ROTATION 0.454
-#define CLOCK_SPEED 										170000000
+#define CLOCK_SPEED 										100
 #define UINT12_MAX											4095
 #define PRESSURE_SENSOR_VOLTAGE					3.3
-#define PRESSURE_SENSOR_MULT						261.17
+//#define PRESSURE_SENSOR_MULT						261.17
+#define PRESSURE_SENSOR_MULT					172.37
 #define PRESSURE_SENSOR_OFFSET					86.185
 
 #define MAX_PRESSURE										689.47
@@ -65,7 +66,8 @@ class Spray_driver : public Driver_module
 		                   uint8_t *inout_transfer_id, uint8_t priority,
 		                   const void *payload, uint16_t payload_len);
 
-		void timer_capture_callback(TIM_HandleTypeDef *htim);
+		void gpio_callback(uint16_t GPIO_Pin);
+		void timer_period_callback(TIM_HandleTypeDef *htim);
 		void adc_callback(ADC_HandleTypeDef *AdcHandle);
 
 		static Spray_driver& get_driver(void);
@@ -89,7 +91,11 @@ class Spray_driver : public Driver_module
 
 		volatile uint32_t adc_reading;
 		volatile telemBase_t pressure_sensor;
-		volatile telemBase_t flowrate_sensor[NUM_FLOWRATE_SENSORS];
+		volatile telemBase_t flowrate_sensor;
+		volatile uint32_t prev_flowrate_value;
+		volatile bool recv_flowrate_reading;
+
+		volatile uint32_t flowrate_counter;
 
 		uint16_t flowrate_integral;
 		uint32_t previous_PID_time;

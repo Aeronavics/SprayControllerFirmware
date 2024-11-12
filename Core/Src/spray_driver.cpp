@@ -61,8 +61,8 @@ void Spray_driver::sync_update_100Hz(void)
 
 	// Run PID controller
 	uint16_t target_pwm = calculate_spray_ppm();
-	// Update PWM out to spray Pump
-	__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, target_pwm);
+//	Update PWM out to spray Pump
+	__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, target_pwm);
 
 	return;
 }
@@ -112,6 +112,9 @@ void Spray_driver::sync_update_1Hz(void)
 		}
 		case DRIVER_STATE_INIT:
 		{
+			MX_DMA_Init();
+			MX_ADC1_Init();
+
 			/* Intialise ADCs*/
 			if(HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED) != HAL_OK)
 			{
@@ -119,24 +122,21 @@ void Spray_driver::sync_update_1Hz(void)
 				Error_Handler();
 			}
 
-			if(HAL_ADC_Start_DMA(&hadc1, (uint32_t*) adc_reading, 1) != HAL_OK)
+			if(HAL_ADC_Start_DMA(&hadc1, (uint32_t*)&adc_reading, 1) != HAL_OK)
 			{
 				/* Start Error */
 				Error_Handler();
 			}
 
 			/* Initialise Timers */
-			MX_TIM2_Init();
+			MX_TIM1_Init();
 
-			HAL_TIM_IC_Start_IT(&htim1, TIM_CHANNEL_1);
-			HAL_TIM_IC_Start_IT(&htim1, TIM_CHANNEL_2);
-			HAL_TIM_IC_Start_IT(&htim1, TIM_CHANNEL_3);
-			HAL_TIM_IC_Start_IT(&htim1, TIM_CHANNEL_4);
+			HAL_TIM_Base_Start_IT(&htim1);
 
-			MX_TIM2_Init();
+			MX_TIM3_Init();
 
-			__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 0);
-			HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
+			__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 0);
+			HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
 
 			Libcanard_module::get_driver().sendLog(impl_::LogLevel::Debug,
 			                                       "Spray Driver initialized");
@@ -245,6 +245,7 @@ void Spray_driver::transmit_telemetry(void)
 	com_aeronavics_SprayInfo spray_info;
 
 	float total_weight = spray_right_weight + spray_left_weight + fuel_weight;
+//	float total_weight = fuel_weight;
 
 	spray_info.spray_remaining = spray_level;
 	spray_info.tank_weight = total_weight;
@@ -270,13 +271,13 @@ void Spray_driver::transmit_telemetry(void)
 void Spray_driver::check_for_faults(void)
 {
 	// Report an error if there is no spray remaining
-	if(spray_level == 0 && (spray_fault >> 6) & 0x01 == 0)
+	if(spray_level == 0 && ((spray_fault >> 6) & 0x01) == 0)
 	{
 		spray_fault += COM_AERONAVICS_SPRAYINFO_ERROR_NO_SPRAY;
 	}
 
 	// Report an error if the pressure is greater or equal to the max pressure
-	if(measured_pressure >= MAX_PRESSURE && (spray_fault >> 5) & 0x01 == 0)
+	if(measured_pressure >= MAX_PRESSURE && ((spray_fault >> 5) & 0x01) == 0)
 	{
 		spray_fault += COM_AERONAVICS_SPRAYINFO_ERROR_OVER_PRESSURE;
 	}
@@ -284,7 +285,8 @@ void Spray_driver::check_for_faults(void)
 	// Report a low pressure error if flow rate is correct but pressure is unreasonably low
 	if((measured_flowrate < desired_flowrate * 1.1
 	    || measured_flowrate > desired_flowrate * 0.9)
-	    && (measured_pressure < MIN_PRESSURE))
+	    && (measured_pressure < MIN_PRESSURE)
+		&& (((spray_fault >> 4) & 0x01) == 0))
 	{
 		spray_fault += COM_AERONAVICS_SPRAYINFO_ERROR_LOW_PRESSURE;
 	}
@@ -293,7 +295,7 @@ void Spray_driver::check_for_faults(void)
 	if((measured_flowrate > desired_flowrate * 1.1
 	    || measured_flowrate < desired_flowrate * 0.9)
 	    && (flowrate_change_ms - HAL_GetTick() > FLOWRATE_CHANGE_TIMEOUT)
-	    && ((spray_fault >> 0) & 0x01 == 0))
+	    && (((spray_fault >> 0) & 0x01) == 0))
 	{
 		spray_fault += COM_AERONAVICS_SPRAYINFO_ERROR_FLOW_RATE_1;
 	}
@@ -308,14 +310,11 @@ void Spray_driver::check_for_faults(void)
 void Spray_driver::calculate_pressure(void)
 {
 	// get moving average of ADC readings
-	uint32_t average_adc = calculate_average(pressure_sensor.raw_values,
-	                                         TELEM_MOVING_AVERAGE_BINS);
+	uint32_t average_adc = calculate_average(pressure_sensor.raw_values, TELEM_MOVING_AVERAGE_BINS);
 	// Convert average ADC reading to voltage
-	float measured_voltage = ((float) average_adc) / UINT12_MAX
-	    * PRESSURE_SENSOR_VOLTAGE;
+	float measured_voltage = ((float) average_adc) / UINT12_MAX * PRESSURE_SENSOR_VOLTAGE;
 	// Convert voltage to pressure (kpa) with equation from datasheet
-	float calculated_pressure = (PRESSURE_SENSOR_MULT * measured_voltage)
-	    - PRESSURE_SENSOR_OFFSET;
+	float calculated_pressure = (PRESSURE_SENSOR_MULT * measured_voltage) - PRESSURE_SENSOR_OFFSET;
 
 	if(calculated_pressure < 0.0)
 	{
@@ -338,15 +337,10 @@ void Spray_driver::calculate_pressure(void)
 void Spray_driver::calculate_flowrate(void)
 {
 	uint16_t total_flowrate = 0;
-	for(uint8_t i = 0; i < NUM_FLOWRATE_SENSORS; i++)
+	uint32_t average_frequency = calculate_average(flowrate_sensor.raw_values, TELEM_MOVING_AVERAGE_BINS);
+	if(average_frequency != 0)
 	{
-		uint32_t average_period = calculate_average(flowrate_sensor[i].raw_values,
-		                                            TELEM_MOVING_AVERAGE_BINS);
-		if(average_period != 0)
-		{
-			total_flowrate += (uint16_t) (FLOWRATE_SENSOR_SINGLE_ROTATION
-			    * (CLOCK_SPEED / average_period));
-		}
+		total_flowrate += (uint16_t) (FLOWRATE_SENSOR_SINGLE_ROTATION * average_frequency);
 	}
 	measured_flowrate = total_flowrate;
 }
@@ -426,46 +420,36 @@ void Spray_driver::adc_callback(ADC_HandleTypeDef *AdcHandle)
 }
 
 /**
- * @brief  Timer interrupt callback
+ * @brief  Timer period interrupt callback
  * @param  htim : Timer handle
- * @note   Read the period between two rising edges from the flowrate timers
+ * @note   Interrupt when the time overflows
  * @retval None
  */
-void Spray_driver::timer_capture_callback(TIM_HandleTypeDef *htim)
+void Spray_driver::timer_period_callback(TIM_HandleTypeDef *htim)
 {
-	if(htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1)
+	if(htim->Instance == TIM1)
 	{
-		flowrate_sensor[0].raw_values[flowrate_sensor[0].array_index
-		    % TELEM_MOVING_AVERAGE_BINS] = HAL_TIM_ReadCapturedValue(htim,
-		                                                             TIM_CHANNEL_1);
-		flowrate_sensor[0].array_index = ++flowrate_sensor[0].array_index
-		    % TELEM_MOVING_AVERAGE_BINS;
-	}
-	else if(htim->Channel == HAL_TIM_ACTIVE_CHANNEL_2)
-	{
-		flowrate_sensor[1].raw_values[flowrate_sensor[1].array_index
-		    % TELEM_MOVING_AVERAGE_BINS] = HAL_TIM_ReadCapturedValue(htim,
-		                                                             TIM_CHANNEL_2);
-		flowrate_sensor[1].array_index = ++flowrate_sensor[1].array_index
-		    % TELEM_MOVING_AVERAGE_BINS;
-	}
-	else if(htim->Channel == HAL_TIM_ACTIVE_CHANNEL_3)
-	{
-		flowrate_sensor[2].raw_values[flowrate_sensor[2].array_index
-		    % TELEM_MOVING_AVERAGE_BINS] = HAL_TIM_ReadCapturedValue(htim,
-		                                                             TIM_CHANNEL_3);
-		flowrate_sensor[2].array_index = ++flowrate_sensor[2].array_index
-		    % TELEM_MOVING_AVERAGE_BINS;
-	}
-	else if(htim->Channel == HAL_TIM_ACTIVE_CHANNEL_4)
-	{
-		flowrate_sensor[3].raw_values[flowrate_sensor[3].array_index
-		    % TELEM_MOVING_AVERAGE_BINS] = HAL_TIM_ReadCapturedValue(htim,
-		                                                             TIM_CHANNEL_4);
-		flowrate_sensor[3].array_index = ++flowrate_sensor[3].array_index
-		    % TELEM_MOVING_AVERAGE_BINS;
+		uint32_t frequency = CLOCK_SPEED * flowrate_counter;
+		flowrate_sensor.raw_values[flowrate_sensor.array_index % TELEM_MOVING_AVERAGE_BINS] = frequency;
+		flowrate_sensor.array_index = ++flowrate_sensor.array_index % TELEM_MOVING_AVERAGE_BINS;
+		flowrate_counter = 0;
 	}
 }
+
+/**
+ * @brief  GPIO event callback
+ * @param  GPIO_Pin : Timer handle
+ * @note   Interrupt when an event occurs on a GPIO Pin
+ * @retval None
+ */
+void Spray_driver::gpio_callback(uint16_t GPIO_Pin)
+{
+	if(GPIO_Pin == FLOW_1_Pin || GPIO_Pin == FLOW_2_Pin || GPIO_Pin == FLOW_3_Pin || GPIO_Pin == FLOW_4_Pin)
+	{
+		flowrate_counter++;
+	}
+}
+
 
 Spray_driver::Spray_driver(void)
 {

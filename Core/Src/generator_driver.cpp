@@ -78,6 +78,20 @@ void Generator_driver::sync_update_1Hz(void)
 
 		case DRIVER_STATE_NORMAL:
 		{
+			if (generator_cylinder_temp >= 60)
+			{
+				HAL_GPIO_WritePin(FAN_1_GPIO_Port, FAN_1_Pin, GPIO_PIN_SET);
+				HAL_GPIO_WritePin(FAN_2_GPIO_Port, FAN_2_Pin, GPIO_PIN_SET);
+				HAL_GPIO_WritePin(FAN_3_GPIO_Port, FAN_3_Pin, GPIO_PIN_SET);
+				HAL_GPIO_WritePin(FAN_4_GPIO_Port, FAN_4_Pin, GPIO_PIN_SET);
+			}
+			else if (generator_cylinder_temp <= 55)
+			{
+				HAL_GPIO_WritePin(FAN_1_GPIO_Port, FAN_1_Pin, GPIO_PIN_RESET);
+				HAL_GPIO_WritePin(FAN_2_GPIO_Port, FAN_2_Pin, GPIO_PIN_RESET);
+				HAL_GPIO_WritePin(FAN_3_GPIO_Port, FAN_3_Pin, GPIO_PIN_RESET);
+				HAL_GPIO_WritePin(FAN_4_GPIO_Port, FAN_4_Pin, GPIO_PIN_RESET);
+			}
 			break;
 		}
 
@@ -130,6 +144,8 @@ void Generator_driver::handle_rx_can(const CanardRxTransfer *transfer,
 	{
 		com_aeronavics_ExtenderInfo generator_info;
 		com_aeronavics_ExtenderInfo_decode(transfer, &generator_info);
+
+		generator_cylinder_temp = generator_info.EngineCylinderTemperature - 40;
 
 		generator_info.FuelPosition = fuel_percent;
 

@@ -22,24 +22,23 @@
 #define __IWDG_H__
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
-	/* Includes ------------------------------------------------------------------*/
+/* Includes ------------------------------------------------------------------*/
 #include "main.h"
 
-	/* USER CODE BEGIN Includes */
+/* USER CODE BEGIN Includes */
 
-	/* USER CODE END Includes */
+/* USER CODE END Includes */
 
-	extern IWDG_HandleTypeDef hiwdg;
+extern IWDG_HandleTypeDef hiwdg;
 
-	/* USER CODE BEGIN Private defines */
+/* USER CODE BEGIN Private defines */
 
-	/* USER CODE END Private defines */
+/* USER CODE END Private defines */
 
-	void MX_IWDG_Init(void);
+void MX_IWDG_Init(void);
 
 /* USER CODE BEGIN Prototypes */
 

@@ -13,6 +13,8 @@
 #include "driver_module.hpp"
 #include "can_params.hpp"
 
+#include "gpio.h"
+
 #include <com.aeronavics.ExtenderInfo.h>
 #include <com.aeronavics.ExtenderCtrl.h>
 #include <com.aeronavics.LoadcellInfo.h>

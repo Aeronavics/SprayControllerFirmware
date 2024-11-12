@@ -31,11 +31,13 @@ uint8_t counter;
 
 //driver list
 static Driver_module *const drivers[] =
-{ static_cast<Driver_module*>(&Libcanard_module::get_driver()),
-    static_cast<Driver_module*>(&Mavlink_params::get_driver()),
-    static_cast<Driver_module*>(&uart1_driver),
+{
+		static_cast<Driver_module*>(&Libcanard_module::get_driver()),
+//    static_cast<Driver_module*>(&Mavlink_params::get_driver()),
+//    static_cast<Driver_module*>(&uart1_driver),
     static_cast<Driver_module*>(&Spray_driver::get_driver()),
-    static_cast<Driver_module*>(&Generator_driver::get_driver()), };
+    static_cast<Driver_module*>(&Generator_driver::get_driver()),
+};
 
 static const size_t NUM_DRIVERS = sizeof(drivers) / sizeof(Driver_module*);
 
@@ -81,19 +83,35 @@ int main(void)
 	/* Initialize all configured peripherals */
 	MX_GPIO_Init();
 	MX_DMA_Init();
-	MX_ADC1_Init();
-	MX_FDCAN1_Init();
-	MX_FDCAN2_Init();
 	MX_TIM6_Init();
-	MX_USART1_UART_Init();
-	MX_IWDG_Init();
+//	MX_USART1_UART_Init();
+//	MX_IWDG_Init();
+
+	HAL_TIM_Base_Start_IT(&htim6);
+
+
+	// Turn off LEDS
+	HAL_GPIO_WritePin(ERROR0_GPIO_Port, ERROR0_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(ERROR1_GPIO_Port, ERROR1_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(STATUS1_GPIO_Port, STATUS1_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(STATUS2_GPIO_Port, STATUS2_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(STATUS3_GPIO_Port, STATUS3_Pin, GPIO_PIN_SET);
+
+	// Turn off Fans
+	HAL_GPIO_WritePin(FAN_1_GPIO_Port, FAN_1_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(FAN_2_GPIO_Port, FAN_2_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(FAN_3_GPIO_Port, FAN_3_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(FAN_4_GPIO_Port, FAN_4_Pin, GPIO_PIN_RESET);
+
 
 	/* USER CODE BEGIN 2 */
-	uart1_driver.set_uart_module(&huart1, UART_MODULE_UART_1, false,
-	                             MAVLINK_COMM_0);
+//	uart1_driver.set_uart_module(&huart1, UART_MODULE_UART_1, false, MAVLINK_COMM_0);
 
 	Libcanard_module::get_driver().set_name(UAVCAN_MODULE_NAME);
 	/* USER CODE END 2 */
+
+	// FUCKING REQUIRED DO NOT TOUCH
+	HAL_Delay(500);
 
 	/* Infinite loop */
 	/* USER CODE BEGIN WHILE */
@@ -103,7 +121,7 @@ int main(void)
 
 		/* USER CODE BEGIN 3 */
 		// Clear the watchdog, and reset it to 1 second (1/(40K/16/2500))
-		HAL_IWDG_Refresh(&hiwdg);
+//		HAL_IWDG_Refresh(&hiwdg);
 
 		// Iterate over each of the drivers and run the relevant handler.
 		runDriversUnthrottled();
@@ -430,14 +448,17 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		systick_counter++;
 		isr_system_timer_tick();
 	}
-}
-
-// Timer Interrupt Callback
-void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
-{
 	if(htim->Instance == TIM1)
 	{
-		Spray_driver::get_driver().timer_capture_callback(htim);
+		Spray_driver::get_driver().timer_period_callback(htim);
+	}
+}
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+	if(GPIO_Pin == FLOW_1_Pin || GPIO_Pin == FLOW_2_Pin || GPIO_Pin == FLOW_3_Pin || GPIO_Pin == FLOW_4_Pin)
+	{
+		Spray_driver::get_driver().gpio_callback(GPIO_Pin);
 	}
 }
 

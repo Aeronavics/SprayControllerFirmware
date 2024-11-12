@@ -22,42 +22,48 @@
 #define __STM32G4xx_IT_H
 
 #ifdef __cplusplus
-extern "C"
-{
+ extern "C" {
 #endif
 
-	/* Private includes ----------------------------------------------------------*/
-	/* USER CODE BEGIN Includes */
+/* Private includes ----------------------------------------------------------*/
+/* USER CODE BEGIN Includes */
 
-	/* USER CODE END Includes */
+/* USER CODE END Includes */
 
-	/* Exported types ------------------------------------------------------------*/
-	/* USER CODE BEGIN ET */
+/* Exported types ------------------------------------------------------------*/
+/* USER CODE BEGIN ET */
 
-	/* USER CODE END ET */
+/* USER CODE END ET */
 
-	/* Exported constants --------------------------------------------------------*/
-	/* USER CODE BEGIN EC */
+/* Exported constants --------------------------------------------------------*/
+/* USER CODE BEGIN EC */
 
-	/* USER CODE END EC */
+/* USER CODE END EC */
 
-	/* Exported macro ------------------------------------------------------------*/
-	/* USER CODE BEGIN EM */
+/* Exported macro ------------------------------------------------------------*/
+/* USER CODE BEGIN EM */
 
-	/* USER CODE END EM */
+/* USER CODE END EM */
 
-	/* Exported functions prototypes ---------------------------------------------*/
-	void NMI_Handler(void);
-	void HardFault_Handler(void);
-	void MemManage_Handler(void);
-	void BusFault_Handler(void);
-	void UsageFault_Handler(void);
-	void SVC_Handler(void);
-	void DebugMon_Handler(void);
-	void PendSV_Handler(void);
-	void SysTick_Handler(void);
-	void DMA1_Channel1_IRQHandler(void);
-	void ADC1_2_IRQHandler(void);
+/* Exported functions prototypes ---------------------------------------------*/
+void NMI_Handler(void);
+void HardFault_Handler(void);
+void MemManage_Handler(void);
+void BusFault_Handler(void);
+void UsageFault_Handler(void);
+void SVC_Handler(void);
+void DebugMon_Handler(void);
+void PendSV_Handler(void);
+void SysTick_Handler(void);
+void EXTI0_IRQHandler(void);
+void EXTI1_IRQHandler(void);
+void EXTI2_IRQHandler(void);
+void EXTI3_IRQHandler(void);
+void DMA1_Channel1_IRQHandler(void);
+void FDCAN1_IT0_IRQHandler(void);
+void TIM1_UP_TIM16_IRQHandler(void);
+void TIM6_DAC_IRQHandler(void);
+void FDCAN2_IT0_IRQHandler(void);
 /* USER CODE BEGIN EFP */
 
 /* USER CODE END EFP */
