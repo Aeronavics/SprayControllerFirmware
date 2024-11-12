@@ -30,4 +30,6 @@
 
 #define UART1_ENABLED
 
+#define CANARD_MULTI_IFACE
+
 #endif /* INC_CONFIG_H_ */
