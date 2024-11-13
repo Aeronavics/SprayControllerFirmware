@@ -85,7 +85,7 @@ int main(void)
 	MX_DMA_Init();
 	MX_TIM6_Init();
 //	MX_USART1_UART_Init();
-//	MX_IWDG_Init();
+	MX_IWDG_Init();
 
 	HAL_TIM_Base_Start_IT(&htim6);
 
@@ -121,7 +121,7 @@ int main(void)
 
 		/* USER CODE BEGIN 3 */
 		// Clear the watchdog, and reset it to 1 second (1/(40K/16/2500))
-//		HAL_IWDG_Refresh(&hiwdg);
+		HAL_IWDG_Refresh(&hiwdg);
 
 		// Iterate over each of the drivers and run the relevant handler.
 		runDriversUnthrottled();
@@ -300,11 +300,19 @@ void readDriverStatus()
 	else if(are_drivers_normal)
 		system_status = (is_system_armed()) ? MAV_STATE_ACTIVE : MAV_STATE_STANDBY;
 }
-void driverhost_broadcast_can(const CanardRxTransfer *transfer,
-                              uint64_t data_type_signature,
-                              uint16_t data_type_id, uint8_t *inout_transfer_id,
-                              uint8_t priority, const void *payload,
-                              uint16_t payload_len, Driver_module *const except)
+void driverhost_broadcast_can(
+		const CanardRxTransfer *transfer,
+		uint64_t data_type_signature,
+		uint16_t data_type_id,
+		uint8_t *inout_transfer_id,
+		uint8_t priority,
+		const void *payload,
+		uint16_t payload_len,
+#ifdef CANARD_MULTI_IFACE
+		uint8_t iface_mask,
+#endif
+		Driver_module *const except
+		)
 {
 	for(size_t i = 0; i < NUM_DRIVERS; i++)
 	{
@@ -313,9 +321,18 @@ void driverhost_broadcast_can(const CanardRxTransfer *transfer,
 		{
 			// Else, pass the message to this driver's message handler.
 			if(drivers[i] != nullptr)
-				drivers[i]->handle_rx_can(transfer, data_type_signature, data_type_id,
-				                          inout_transfer_id, priority, payload,
-				                          payload_len);
+				drivers[i]->handle_rx_can(
+						transfer,
+						data_type_signature,
+						data_type_id,
+						inout_transfer_id,
+						priority,
+						payload,
+						payload_len
+#ifdef CANARD_MULTI_IFACE
+						, iface_mask
+#endif
+						);
 		}
 	}
 

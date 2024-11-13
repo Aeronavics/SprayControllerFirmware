@@ -32,10 +32,18 @@ class Generator_driver : public Driver_module
 		void sync_update_100Hz();
 		void sync_update_10Hz();
 		void sync_update_1Hz();
-		void handle_rx_can(const CanardRxTransfer *transfer,
-		                   uint64_t data_type_signature, uint16_t data_type_id,
-		                   uint8_t *inout_transfer_id, uint8_t priority,
-		                   const void *payload, uint16_t payload_len);
+		void handle_rx_can(
+				const CanardRxTransfer *transfer,
+				uint64_t data_type_signature,
+				uint16_t data_type_id,
+				uint8_t *inout_transfer_id,
+				uint8_t priority,
+				const void *payload,
+				uint16_t payload_len
+#ifdef CANARD_MULTI_IFACE
+				, uint8_t iface_mask
+#endif
+		);
 
 		static Generator_driver& get_driver(void);
 		~Generator_driver(void);

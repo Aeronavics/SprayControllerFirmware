@@ -61,10 +61,18 @@ class Spray_driver : public Driver_module
 		void sync_update_100Hz(void);
 		void sync_update_10Hz(void);
 		void sync_update_1Hz(void);
-		void handle_rx_can(const CanardRxTransfer *transfer,
-		                   uint64_t data_type_signature, uint16_t data_type_id,
-		                   uint8_t *inout_transfer_id, uint8_t priority,
-		                   const void *payload, uint16_t payload_len);
+		void handle_rx_can(
+				const CanardRxTransfer *transfer,
+				uint64_t data_type_signature,
+				uint16_t data_type_id,
+				uint8_t *inout_transfer_id,
+				uint8_t priority,
+				const void *payload,
+				uint16_t payload_len
+#ifdef CANARD_MULTI_IFACE
+				, uint8_t iface_mask
+#endif
+		);
 
 		void gpio_callback(uint16_t GPIO_Pin);
 		void timer_period_callback(TIM_HandleTypeDef *htim);

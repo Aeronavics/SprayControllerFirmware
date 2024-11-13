@@ -120,12 +120,18 @@ void Generator_driver::sync_update_1Hz(void)
 	return;
 }
 
-void Generator_driver::handle_rx_can(const CanardRxTransfer *transfer,
-                                     uint64_t data_type_signature,
-                                     uint16_t data_type_id,
-                                     uint8_t *inout_transfer_id,
-                                     uint8_t priority, const void *payload,
-                                     uint16_t payload_len)
+void Generator_driver::handle_rx_can(
+		const CanardRxTransfer *transfer,
+		uint64_t data_type_signature,
+		uint16_t data_type_id,
+		uint8_t *inout_transfer_id,
+		uint8_t priority,
+		const void *payload,
+		uint16_t payload_len
+#ifdef CANARD_MULTI_IFACE
+		, uint8_t iface_mask
+#endif
+)
 {
 	//Let us subscribe to the ArrayCommand message.
 	if(transfer->data_type_id == COM_AERONAVICS_LOADCELLINFO_ID)
@@ -156,11 +162,20 @@ void Generator_driver::handle_rx_can(const CanardRxTransfer *transfer,
 
 		length = com_aeronavics_ExtenderInfo_encode(&generator_info,
 		                                            generator_info_buffer);
-		driverhost_broadcast_can(nullptr,
-		COM_AERONAVICS_EXTENDERINFO_SIGNATURE,
-		                         COM_AERONAVICS_EXTENDERINFO_ID, &transfer_id,
-		                         CAN_TRANSFER_PRIORITY_MEDIUM,
-		                         &generator_info_buffer, length, this);
+		// Broadcast updated message onto can bus 2
+		driverhost_broadcast_can(
+				nullptr,
+				COM_AERONAVICS_EXTENDERINFO_SIGNATURE,
+				COM_AERONAVICS_EXTENDERINFO_ID,
+				&transfer_id,
+				CAN_TRANSFER_PRIORITY_MEDIUM,
+				&generator_info_buffer,
+				length,
+#ifdef CANARD_MULTI_IFACE
+				2,
+#endif
+				this
+		);
 	}
 }
 
