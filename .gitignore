@@ -40,3 +40,5 @@ Debug
 Release
 
 *.launch
+
+.settings
